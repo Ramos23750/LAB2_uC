@@ -1,0 +1,61 @@
+;
+/*Universidad del Valle de Guatemala
+IE2023: Programación de Microcontroladores
+Autor: Diego Alejandro Ramos Rodas
+Proyecto: Pre-Laboratorio no.2
+Hardware: ATMega328P
+Creado: 10-02-2025
+Modificado: 10-02-2025
+Descripción: Consiste en dos contares, cada uno con su respectivo
+incremento y decremento, también un sumador de ambos valores de
+contador.*/
+
+/////////////Encabezado///////////
+.include "M328PDEF.INC"
+.cseg
+.org 0x0000
+////////////STCK PNTR////////////
+LDI R16, LOW(RAMEND)
+OUT SPL, R16
+LDI R17, HIGH(RAMEND)
+OUT SPH, R17
+/////////////SETUP///////////////
+SETUP:
+	////preescaler 1MHz
+	LDI R18, (1<<CLKPCE)
+	STS CLKPR, R18
+	LDI R20, 0b00000100
+	STS CLKPR, R18
+	CALL TIMER0
+	LDI R18, 0x0F
+	OUT DDRD, R18
+	LDI R18, 0
+	OUT PORTD, R18
+	LDI R19, 0
+
+MAIN_LOOP:
+	SBIC TIFR0, TOV0
+	RJMP MAIN_LOOP
+	SBIC TIFR0, TOV0
+	LDI R18, 100
+	OUT TCNT0, R18
+	CALL CONT_OVERF
+	INC R19
+	ANDI R19, 0x0F
+	OUT PORTD, R19
+	RJMP MAIN_LOOP
+
+CONT_OVERF:
+	INC R20
+	CPI R20, 10
+	BRNE SALIR
+	LDI R20, 0
+SALIR:
+	RET
+//contar de 10 en 10
+TIMER0:
+	LDI R18, (1<<CS01)|(1<<CS00)
+	OUT TCCR0B, R18
+	LDI R18, 100
+	OUT TCNT0, R18
+	RET
