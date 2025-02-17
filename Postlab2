@@ -1,1 +1,107 @@
+;
+/*Universidad del Valle de Guatemala
+IE2023: Programación de Microcontroladores
+Autor: Diego Alejandro Ramos Rodas
+Proyecto: Post-Laboratorio no.2
+Hardware: ATMega328P
+Creado: 16-02-2025
+Modificado: 16-02-2025
+Descripción: Contador de segundos: Modifique el contador binario de 4 bits del prelaboratorio
+para que el contador se incrementará cada 1s. Importante, el timer0 seguirá
+incrementando cada 100ms.
+En el momento que el contador de segundos sea igual al contador de los botones,
+deberá reiniciar el contador de segundos y cambiar el estado de una LED (de 0-
+>1 o de 1->0 durante un ciclo entero). De manera que pueda variar el periodo del
+encendido y apagado del indicador utilizando los botones. 
+*/
+/////////////Encabezado///////////
+.include "M328PDEF.INC"
+.cseg
+.org 0x0000
+////////////STCK PNTR////////////
+LDI R16, LOW(RAMEND)
+OUT SPL, R16
+LDI R17, HIGH(RAMEND)
+OUT SPH, R17
+//Traduccion para el display
+TABLA: .db 0x3F, 0x06, 0x5B, 0x4F, 0x66, 0x6D, 0x7D, 0x07, 0x7F, 0x67, 0x77, 0x7C, 0x58, 0x5E, 0x79, 0x71
+////////////SETUP///////////////
+SETUP:
+	////preescaler 1MHz
+	CALL TIM0
+	LDI R20, (1<<CLKPCE)
+	STS CLKPR, R20
+	LDI R20, 0b00000111
+	STS CLKPR, R20
+	//salidas y entradas
+	LDI R16, 0b01111111
+	OUT DDRD, R16
+	LDI R16, 0b00011111
+	OUT DDRC, R16
+	//USO DE REGISTRO Z
+	LDI R17, 0 //CONTADOR
+	LDI ZH, HIGH(TABLA << 1)
+	LDI ZL, LOW(TABLA << 1)
+	//ADD ZL, R18
+	LPM R18, Z
+	LDI R21, 0
 
+MAIN_LOOP:
+	OUT PORTD, R18
+	OUT PORTC, R17
+	SBIC PINB, PB0
+	CALL DELINC
+	SBIC PINB, PB1
+	CALL DELDEC
+	RJMP MAIN_LOOP
+/*	IN R16, TIFR0
+	SBRS R16, OCF0A
+	RJMP MAIN_LOOP
+	SBI TIFR0, OCF0A*/
+
+DELINC:
+	LDI R19, 100
+	DEL1:
+		DEC R19
+		BRNE DEL1
+	SBIC PINB, PB0
+	RJMP DELINC
+	CALL INCREMENTO
+
+DELDEC:
+	LDI R20, 100
+	DEL2:
+		DEC R20
+		BRNE DEL2
+	SBIC PINB, PB1
+	RJMP DELDEC
+	CALL DECREMENTO
+
+INCREMENTO:
+	CPI R21, 0x0F
+	BREQ PASARAN
+	INC R21
+	ADIW Z, 1
+	LPM R18, Z
+	OUT PORTD, R18
+	RJMP MAIN_LOOP
+DECREMENTO:
+	CPI R21, 0x00
+	BREQ PASARAN
+	DEC R21
+	SBIW Z, 1
+	LPM R18, Z
+	OUT PORTD, R18
+	RJMP MAIN_LOOP
+
+PASARAN: 
+	RJMP MAIN_LOOP
+TIM0: 
+	LDI R20, 0
+	OUT TCNT0, R16
+	LDI R20, 156
+	LDI R20, (1<<WGM01)
+	OUT TCCR0A, R20
+	LDI R20, (1<<CS02) | (1<<CS00)
+	OUT TCCR0B, R20
+	RET
