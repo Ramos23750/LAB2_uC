@@ -1,0 +1,84 @@
+;
+/*Universidad del Valle de Guatemala
+IE2023: Programación de Microcontroladores
+Autor: Diego Alejandro Ramos Rodas
+Proyecto: Laboratorio no.1
+Hardware: ATMega328P
+Creado: 09-02-2025
+Modificado: 10-02-2025
+Descripción: Consiste en dos contares, cada uno con su respectivo
+incremento y decremento, también un sumador de ambos valores de
+contador.*/
+/////////////Encabezado///////////
+.include "M328PDEF.INC"
+.cseg
+.org 0x0000
+////////////STCK PNTR////////////
+LDI R16, LOW(RAMEND)
+OUT SPL, R16
+LDI R17, HIGH(RAMEND)
+OUT SPH, R17
+TABLA: .db 0x3F, 0x06, 0x5B, 0x4F, 0x6D, 0x7D, 0x07, 0x67, 0x77, 0x78, 0x39, 0x5E, 0x79, 0x31
+////////////SETUP///////////////
+SETUP:
+	////preescaler 1MHz
+	LDI R20, (1<<CLKPCE)
+	STS CLKPR, R20
+	LDI R20, 0b00000100
+	STS CLKPR, R20
+	////salidas y pullups
+	LDI R16, 0xFF		//bits de salida de contadores
+	OUT DDRD, R16
+	LDI R21, 0
+	LDI R22, 0
+	OUT DDRC, R22
+	LDI ZL, LOW(TABLA<<1)
+	LDI ZH, HIGH(TABLA<<1)
+	LD R21, Z
+
+MAIN_LOOP:
+	OUT PORTD, R21
+	SBIC PINC, PC4
+	CALL INCR
+	SBIC PINC, PC5
+	CALL DECRE
+	RJMP MAIN_LOOP
+
+INCR: 
+	CALL DEL
+	SBIC PINC, PC4
+	RET
+	CPI R21, 0x0F
+	BREQ PASAR
+	INC R21
+	ADIW Z, 1
+	LD R22, Z 
+	OUT PORTD, R22
+	RJMP MAIN_LOOP
+DECRE: 
+	CALL DEL
+	SBIC PINC, PC4
+	RET
+	CPI R21, 0x00
+	BREQ PASAR
+	DEC R21
+	SBIW Z, 1
+	LD R22, Z
+	OUT PORTD, R22
+	RJMP MAIN_LOOP
+ 
+	///////////////DELAY PARA ANTIREBOTE//////////
+DEL:
+	LDI R18, 0
+	LDI R19, 0
+BUC:
+	INC R18
+	CPI R18, 0
+	BRNE BUC
+	INC R19
+	CPI R19, 0
+	BRNE BUC
+	RET
+
+PASAR:
+	RJMP MAIN_LOOP
